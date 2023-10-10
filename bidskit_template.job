@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# SLURM batch job template
+# Edit sections in square braces []
+
+#Submit this script with: sbatch thefilename
+
+#SBATCH --time=4:00:00   # walltime
+#SBATCH --ntasks=1   # number of processor cores (i.e. tasks)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --mem-per-cpu=16G   # memory per CPU core
+#SBATCH -J "[MYJOBNAME]"   # job name
+#SBATCH --mail-user=[MYUSERNAME]@caltech.edu   # email address
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+#SBATCH --qos=normal
+#SBATCH --output=logs/slurm-%x.%j.out
+#SBATCH --error=logs/slurm-%x.%j.err
+
+#------------------
+# START OF JOB CODE 
+#------------------
+
+# Dataset name
+ds_name="[MYDATASETNAME]"
+
+# Project directory
+proj_dir=/groups/[MYGROUPNAME]
+
+# Fast scratch directory
+scratch_dir=/central/scratchio/[MYUSERNAME]
+
+# Project BIDS folder
+bids_dir=${proj_dir}/${ds_name}
+
+# Temporary fast scratch BIDS folder
+tmp_bids_dir=${scratch_dir}/${ds_name}
+mkdir -p ${tmp_bids_dir}
+
+echo "Running bidskit on ${ds_name}"
+echo "Start at $(date)"
+
+# Sync project BIDS directory to scratch space
+echo "Syncing ${bids_dir} to ${tmp_bids_dir}"
+rsync -ra --exclude 'derivatives' ${bids_dir}/* ${tmp_bids_dir}
+
+# Convert all subj/sessions in sourcedata
+gztype="o"  # Optimal pigz compression
+echo "Starting bidskit pass1 in ${tmp_bids_dir}"
+bidskit -d ${tmp_bids_dir} --compression ${gztype} --bind-fmaps [--auto or other command line arguments]
+echo "Starting bidskit pass2 in ${tmp_bids_dir}"
+bidskit -d ${tmp_bids_dir} --compression ${gztype} --bind-fmaps [--auto or other command line arguments]
+
+# Sync results back to project BIDS directory
+echo "Syncing ${tmp_bids_dir} to ${bids_dir}"
+rsync -ra --exclude 'derivatives' ${tmp_bids_dir}/* ${bids_dir}
+
+echo "Completed at ${date}"

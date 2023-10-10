@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# SLURM batch job template
+# Edit sections in square braces []
+
+#Submit this script with: sbatch thefilename
+
+#SBATCH --time=12:00:00   # walltime
+#SBATCH --ntasks=6   # number of processor cores (i.e. tasks)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --mem-per-cpu=8G   # memory per CPU core
+#SBATCH -J "[MYJOBNAME]"   # job name
+#SBATCH --mail-user=[MYUSERNAME]@caltech.edu   # email address
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+#SBATCH --qos=normal
+#SBATCH --output=logs/slurm-%x.%j.out
+#SBATCH --error=logs/slurm-%x.%j.err
+#SBATCH --array=1-[NUMBER OF SUBJECTS]
+
+#------------------
+# START OF JOB CODE 
+#------------------
+
+# Suffix for directory naming
+suffix="mriqc-22p0p6"
+
+# BIDS root directory
+share_dir=/groups/[MYGROUPNAME]
+bids_dir=${share_dir}/[MYDATASETNAME]
+
+# Read subject ID only for this array job
+# Remember to create the subj_list.txt file in the same folder as this .job script
+# One subject ID per line
+subj_id=$(sed -n "$SLURM_ARRAY_TASK_ID"p subj_list.txt)
+
+echo "Subject ID : ${subj_id}"
+echo "Task ID    : ${task_id}"
+
+# For container safety
+unset PYTHONPATH
+
+# Current version of mriqc
+sing_img="${share_dir}/singularity/${suffix}.sif"
+
+# Place outside BIDS root directory - allows rerun with minimal reprocessing
+work_dir=${share_dir}/work/${suffix}
+mkdir -p ${work_dir}
+
+# Pipeline will create output folder in derivatives
+out_dir="$bids_dir/derivatives/${suffix}"
+mkdir -p ${out_dir}
+
+singularity run \
+  --cleanenv \
+  -B ${bids_dir}:/data \
+  -B ${out_dir}:/out \
+  -B ${work_dir}:/work \
+  $sing_img \
+  --participant_label=${subj_id} \
+  --no-sub \
+  --n_procs=6 \
+  -w /work \
+  /data \
+  /out \
+  participant
