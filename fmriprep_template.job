@@ -2,10 +2,11 @@
 
 # SLURM batch job template
 # Edit sections in square braces []
+# Make sure to manually create the logs/ output folder ahead of submitting the job
 
 #Submit this script with: sbatch thefilename
 
-#SBATCH --time=16:00:00   # walltime
+#SBATCH --time=24:00:00   # walltime (reduce to 16 hours without freesurfer recon)
 #SBATCH --ntasks=6   # number of CPU cores (no MPI)
 #SBATCH --nodes=1   # number of nodes
 #SBATCH --mem-per-cpu=24G   # memory per CPU core
